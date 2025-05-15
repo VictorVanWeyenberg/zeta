@@ -1,30 +1,8 @@
-use diesel::prelude::*;
-use std::cmp::max;
-use std::env;
-use std::path::PathBuf;
+use rusqlite::fallible_iterator::FallibleIterator;
+use rusqlite::{Connection, OpenFlags, Row};
+use sqlite_vfs_http::HTTP_VFS;
 
-table! {
-    zero_index (t) {
-        t -> Double,
-        N -> BigInt,
-        filename -> Text,
-        offset -> Integer,
-        block_number -> Integer,
-    }
-}
-
-#[derive(Queryable, Selectable)]
-#[diesel(table_name = zero_index)]
-#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
-#[allow(non_snake_case)]
-#[allow(dead_code)]
-struct Row {
-    t: f64,
-    N: i64,
-    filename: String,
-    offset: i32,
-    block_number: i32,
-}
+const DB_LOCATION: &str = "https://beta.lmfdb.org/riemann-zeta-zeros/index.db";
 
 #[derive(Debug)]
 pub struct Block {
@@ -32,43 +10,40 @@ pub struct Block {
     pub offset: u32,
 }
 
-impl From<Row> for Block {
-    fn from(value: Row) -> Self {
-        let Row { t, offset, .. } = value;
-        Block {
-            t,
-            offset: max(0, offset) as u32,
-        }
+impl TryFrom<&Row<'_>> for Block {
+    type Error = rusqlite::Error;
+    fn try_from(value: &Row<'_>) -> Result<Self, Self::Error> {
+        Ok(Block {
+            t: value.get("t").expect("Column `t` not found in row."),
+            offset: value
+                .get("offset")
+                .expect("Column `offset` not found in row."),
+        })
     }
 }
 
 pub struct DBConnection {
-    db: SqliteConnection,
+    db: Connection,
 }
 
 impl Default for DBConnection {
     fn default() -> Self {
-        let path =
-            env::var("CARGO_MANIFEST_DIR").expect("Cargo manifest dir not found in environment.");
-        let path = PathBuf::from(path).join("resources/lmf.db");
-        Self {
-            db: SqliteConnection::establish(path.to_str().unwrap())
-                .expect("Cannot open connection to DB."),
-        }
+        let db = Connection::open_with_flags_and_vfs(
+            DB_LOCATION,
+            OpenFlags::SQLITE_OPEN_READ_ONLY,
+            HTTP_VFS,
+        )
+        .expect("Unable to establish connection to database.");
+        Self { db }
     }
 }
 
 impl DBConnection {
-    pub fn for_file(&mut self, file_name: &str) -> Vec<Block> {
-        use self::zero_index::dsl::*;
-        zero_index
-            .select(Row::as_select())
-            .filter(filename.eq(file_name))
-            .order(block_number.asc())
-            .load(&mut self.db)
-            .expect("Unable to query DB.")
-            .into_iter()
-            .map(Block::from)
+    pub fn for_file(&mut self, file_name: &str) -> rusqlite::Result<Vec<Block>> {
+        self.db
+            .prepare("SELECT * FROM zero_index WHERE filename = ?1")?
+            .query([file_name])?
+            .map(|row| Block::try_from(row))
             .collect()
     }
 }

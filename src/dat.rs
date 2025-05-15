@@ -1,6 +1,7 @@
 use crate::database::{Block, DBConnection};
 use crate::lmfdb::lmfdb_data_resolve;
 use crate::repository::FileDigest;
+use crate::ZeroStream;
 use futures::{SinkExt, Stream, TryStreamExt};
 use log::debug;
 use rug::Float;
@@ -10,7 +11,6 @@ use tokio::io::AsyncBufReadExt;
 use tokio::io::AsyncReadExt;
 use tokio::io::BufReader;
 use tokio_util::io::StreamReader;
-use crate::ZeroStream;
 
 type BoxedStream = Box<dyn Stream<Item = Result<bytes::Bytes, io::Error>> + Unpin>;
 
@@ -37,7 +37,7 @@ impl FileProcessor {
                 .map_err(io::Error::other),
         );
         let reader = SimpleSeeker::new(BufReader::new(StreamReader::new(reader)));
-        let blocks = db.for_file(&file_name);
+        let blocks = db.for_file(&file_name).map_err(io::Error::other)?;
         Ok(Self {
             file_name,
             reader,
@@ -45,8 +45,7 @@ impl FileProcessor {
         })
     }
 
-    pub async fn process(self, sink: &mut impl ZeroStream) -> Result<(), io::Error>
-    {
+    pub async fn process(self, sink: &mut impl ZeroStream) -> Result<(), io::Error> {
         let FileProcessor {
             file_name,
             mut reader,
@@ -57,7 +56,7 @@ impl FileProcessor {
         for Block { t, offset, .. } in blocks {
             Self::process_block(&mut reader, t, offset, sink).await?;
             if sink.is_closed() {
-                break
+                break;
             }
         }
         Ok(())
@@ -68,8 +67,7 @@ impl FileProcessor {
         t: f64,
         offset: u32,
         sink: &mut impl ZeroStream,
-    ) -> Result<(), io::Error>
-    {
+    ) -> Result<(), io::Error> {
         reader.consume_until(offset as usize);
         let (t0, t1, n_t0, n_t1) = read_block_header(reader).await?;
         let mut z = 0u128;
@@ -83,7 +81,7 @@ impl FileProcessor {
             let zero = Float::with_val(precision, t) + Float::with_val(precision, z).mul(&eps);
             sink.send(zero).await?;
             if sink.is_closed() {
-                break
+                break;
             }
         }
         Ok(())

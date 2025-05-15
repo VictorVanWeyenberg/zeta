@@ -1,9 +1,9 @@
 use futures::Sink;
+use log::debug;
 use rug::Float;
+use std::io;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use std::io;
-use log::debug;
 use zeta::{zero_stream, ZeroStream};
 
 #[tokio::main]
