@@ -1,0 +1,17 @@
+[package]
+name = "zeta"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+md5 = "0.7.0"
+url = "2.5.4"
+reqwest = { version = "0.12.15", features = ["stream"] }
+futures = "0.3.31"
+hex = "0.4.3"
+diesel = { version = "2.2.10", features = ["sqlite"] }
+bytes = "1.10.1"
+rug = "1.27.0"
+tokio = { version = "1.44.2", features = ["rt", "rt-multi-thread", "macros"] }
+tokio-util = "0.7.15"
+log = "0.4.27"
