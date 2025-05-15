@@ -12,6 +12,10 @@ hex = "0.4.3"
 diesel = { version = "2.2.10", features = ["sqlite"] }
 bytes = "1.10.1"
 rug = "1.27.0"
-tokio = { version = "1.44.2", features = ["rt", "rt-multi-thread", "macros"] }
+tokio = "1.44.2"
 tokio-util = "0.7.15"
 log = "0.4.27"
+
+[dev-dependencies]
+tokio = { version ="1.45.0", features = ["rt", "rt-multi-thread", "macros"] }
+env_logger = "0.11.8"

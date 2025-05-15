@@ -1,7 +1,6 @@
 use crate::database::{Block, DBConnection};
 use crate::lmfdb::lmfdb_data_resolve;
 use crate::repository::FileDigest;
-use crate::ZeroSink;
 use futures::{SinkExt, Stream, TryStreamExt};
 use log::debug;
 use rug::Float;
@@ -11,6 +10,7 @@ use tokio::io::AsyncBufReadExt;
 use tokio::io::AsyncReadExt;
 use tokio::io::BufReader;
 use tokio_util::io::StreamReader;
+use crate::ZeroStream;
 
 type BoxedStream = Box<dyn Stream<Item = Result<bytes::Bytes, io::Error>> + Unpin>;
 
@@ -45,7 +45,8 @@ impl FileProcessor {
         })
     }
 
-    pub async fn process(self, sink: &mut ZeroSink) -> Result<(), io::Error> {
+    pub async fn process(self, sink: &mut impl ZeroStream) -> Result<(), io::Error>
+    {
         let FileProcessor {
             file_name,
             mut reader,
@@ -55,6 +56,9 @@ impl FileProcessor {
         assert_number_of_blocks(&mut reader, &blocks).await?;
         for Block { t, offset, .. } in blocks {
             Self::process_block(&mut reader, t, offset, sink).await?;
+            if sink.is_closed() {
+                break
+            }
         }
         Ok(())
     }
@@ -63,8 +67,9 @@ impl FileProcessor {
         reader: &mut SimpleSeeker,
         t: f64,
         offset: u32,
-        sink: &mut ZeroSink,
-    ) -> Result<(), io::Error> {
+        sink: &mut impl ZeroStream,
+    ) -> Result<(), io::Error>
+    {
         reader.consume_until(offset as usize);
         let (t0, t1, n_t0, n_t1) = read_block_header(reader).await?;
         let mut z = 0u128;
@@ -77,6 +82,9 @@ impl FileProcessor {
             z += ((z3 as u128) << 96) + ((z2 as u128) << 64) + z1 as u128;
             let zero = Float::with_val(precision, t) + Float::with_val(precision, z).mul(&eps);
             sink.send(zero).await?;
+            if sink.is_closed() {
+                break
+            }
         }
         Ok(())
     }

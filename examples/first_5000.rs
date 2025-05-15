@@ -1,35 +1,16 @@
-use crate::dat::FileProcessor;
-use crate::database::DBConnection;
-use crate::repository::{read_repository, FileDigest};
-use futures::{Sink, TryFutureExt};
+use futures::Sink;
 use rug::Float;
-use std::io;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-
-mod dat;
-mod database;
-mod lmfdb;
-mod repository;
+use std::io;
+use log::debug;
+use zeta::{zero_stream, ZeroStream};
 
 #[tokio::main]
 async fn main() {
-    read_repository()
-        .and_then(to_file_processors)
-        .await
-        .expect("Error occurred.")
-}
-
-async fn to_file_processors(files: Vec<FileDigest>) -> Result<(), std::io::Error> {
-    let mut db = DBConnection::default();
+    env_logger::init();
     let mut sink = ZeroSink::default();
-    for file in files {
-        FileProcessor::new(file, &mut db)
-            .await?
-            .process(&mut sink)
-            .await?;
-    }
-    Ok(())
+    zero_stream(&mut sink).await.expect("");
 }
 
 #[derive(Default)]
@@ -45,6 +26,7 @@ impl Sink<Float> for ZeroSink {
     }
 
     fn start_send(mut self: Pin<&mut Self>, item: Float) -> Result<(), Self::Error> {
+        debug!("{item}");
         self.track_amt();
         Ok(())
     }
@@ -58,9 +40,14 @@ impl Sink<Float> for ZeroSink {
     }
 }
 
+impl ZeroStream for ZeroSink {
+    fn is_closed(&self) -> bool {
+        self.amt >= 5000
+    }
+}
+
 impl ZeroSink {
     fn track_amt(&mut self) {
         self.amt += 1;
-        print!("\rZeros streamed: {}", self.amt);
     }
 }
