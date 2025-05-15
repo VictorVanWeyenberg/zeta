@@ -1,0 +1,5 @@
+/target
+/resources
+/.idea
+
+Cargo.lock
