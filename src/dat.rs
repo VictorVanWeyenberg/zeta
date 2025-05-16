@@ -7,7 +7,6 @@ use log::debug;
 use rug::Float;
 use std::io;
 use std::ops::Mul;
-use tokio::io::AsyncBufReadExt;
 use tokio::io::AsyncReadExt;
 use tokio::io::BufReader;
 use tokio_util::io::StreamReader;
@@ -69,7 +68,7 @@ impl FileProcessor {
         } = first;
         debug!("Processing {file_name} ...");
         let number_of_blocks = reader.read_u64().await?;
-        reader.consume_until(*offset);
+        reader.consume_until(*offset).await?;
         for _ in *block_number..number_of_blocks {
             Self::process_block(&mut reader, sink).await?;
             if sink.is_closed() {
@@ -157,8 +156,10 @@ impl SimpleSeeker {
         Ok(value)
     }
 
-    fn consume_until(&mut self, pos: usize) {
-        self.reader.consume(pos - self.position);
-        self.position = pos
+    async fn consume_until(&mut self, pos: usize) -> io::Result<()> {
+        let mut buf = Vec::with_capacity(pos - self.position);
+        self.reader.read_exact(&mut buf).await?;
+        self.position = pos;
+        Ok(())
     }
 }

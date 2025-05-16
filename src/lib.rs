@@ -53,6 +53,9 @@ async fn process_files(
             .process_with_first(sink, first_block)
             .await?;
     }
+    if sink.is_closed() {
+        return Ok(())
+    }
     for file in files {
         FileProcessor::new(file)
             .await?
