@@ -32,11 +32,11 @@ Then configure a `zeta::SeekPattern` to tell the stream how much zeros it should
 
 Pass both the `ZeroStream` and the `SeekPattern` to the `zeta::zero_stream` method.
 
-# Drawbacks
+## Drawbacks
 
 Part of the dataset is a sqlite database that holds the location of all data block in the `.dat` file of the dataset.
 By default, the crate will stream the database using sqlite HTTP VFS. This process can be quite slow
-(1.2 GB, up to 4 minutes), so as an alternative you can download the database locally and refer to it using an
+(1.2 GB, up to 4 minutes). Alternatively, you can download the database locally and refer to it using an
 environment variable.
 
 ```bash
@@ -52,7 +52,19 @@ cargo run --example first_5000
 # - This will execute immediately.
 ```
 
-`SeekPattern::None` does not require database access. This will always run smoothly and only uses the `.dat` files. 
+`SeekPattern::None` does not require database access. This will always run smoothly and only uses the `.dat` files.
+
+## How It Works
+
+If you want to stream all zeros, you can simply process all .dat files linearly (method described below).
+
+You can read the md5.txt file to get a reference to all files in the repository and parse all files asynchronously from
+there on out.
+
+If you want to stream all or a couple of zeros starting from a specific point in the dataset, then you'll only need to
+query one row from the database to find the location of the first block.
+
+Parse the first block in the first file provided by the database, then parse all consecutive block from there on out.
 
 ## Correctness of the Data
 
