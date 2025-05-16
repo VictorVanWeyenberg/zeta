@@ -9,18 +9,24 @@ const DB_ENV: &str = "ZETA_DB";
 
 #[derive(Debug)]
 pub struct Block {
-    pub t: f64,
-    pub offset: u32,
+    pub offset: usize,
+    pub filename: String,
+    pub block_number: u64,
 }
 
 impl TryFrom<&Row<'_>> for Block {
     type Error = rusqlite::Error;
     fn try_from(value: &Row<'_>) -> Result<Self, Self::Error> {
         Ok(Block {
-            t: value.get("t").expect("Column `t` not found in row."),
             offset: value
                 .get("offset")
                 .expect("Column `offset` not found in row."),
+            filename: value
+                .get("filename")
+                .expect("Column `filename` not found in row."),
+            block_number: value
+                .get("block_number")
+                .expect("Column `block_number` not found in row."),
         })
     }
 }
@@ -51,11 +57,19 @@ impl Default for DBConnection {
 }
 
 impl DBConnection {
-    pub fn for_file(&mut self, file_name: &str) -> rusqlite::Result<Vec<Block>> {
-        self.db
-            .prepare("SELECT t, offset FROM zero_index WHERE filename = ?1")?
-            .query([file_name])?
+    pub fn first_block_start_t(&mut self, t: f64) -> rusqlite::Result<Block> {
+        self.db.prepare("SELECT offset, filename, block_number FROM zero_index WHERE t <= ?1 ORDER BY t ASC LIMIT 1")?
+            .query([t])?
             .map(|row| Block::try_from(row))
-            .collect()
+            .next()
+            .map(|option| option.unwrap())
+    }
+
+    pub fn first_block_start_n(&mut self, n: u64) -> rusqlite::Result<Block> {
+        self.db.prepare("SELECT offset, filename, block_number FROM zero_index WHERE N <= ?1 ORDER BY N ASC LIMIT 1")?
+            .query([n])?
+            .map(|row| Block::try_from(row))
+            .next()
+            .map(|option| option.unwrap())
     }
 }

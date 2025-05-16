@@ -52,8 +52,7 @@ cargo run --example first_5000
 # - This will execute immediately.
 ```
 
-Future optimizations include that `SeekPattern::None` will not require database access and thus will always run
-smoothly.
+`SeekPattern::None` does not require database access. This will always run smoothly and only uses the `.dat` files. 
 
 ## Correctness of the Data
 

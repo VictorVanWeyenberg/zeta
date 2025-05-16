@@ -1,5 +1,5 @@
 use crate::dat::FileProcessor;
-use crate::database::DBConnection;
+use crate::database::{Block, DBConnection};
 use crate::repository::{read_repository, FileDigest};
 use futures::TryFutureExt;
 use rug::Float;
@@ -40,12 +40,21 @@ pub async fn zero_stream(
 }
 
 async fn process_files(
-    files: Vec<FileDigest>,
+    mut files: Vec<FileDigest>,
     sink: &mut ZeroPort<'_>,
 ) -> Result<(), io::Error> {
-    let mut db = DBConnection::default();
+    let first_block = first_block(&sink.pattern);
+    if let Some(first_block) = &first_block {
+        files = files.into_iter()
+            .skip_while(|file| file.file_name.ne(&first_block.filename))
+            .collect();
+        FileProcessor::new(files.remove(0))
+            .await?
+            .process_with_first(sink, first_block)
+            .await?;
+    }
     for file in files {
-        FileProcessor::new(file, &mut db)
+        FileProcessor::new(file)
             .await?
             .process(sink)
             .await?;
@@ -54,6 +63,25 @@ async fn process_files(
         }
     }
     Ok(())
+}
+
+fn first_block(pattern: &SeekPattern) -> Option<Block> {
+    let mut db = DBConnection::default();
+    match pattern {
+        SeekPattern::None => None,
+        SeekPattern::StartWithImaginaryPart(start) => {
+            Some(db.first_block_start_t(*start).expect("Couldn't find first block."))
+        }
+        SeekPattern::StartWithZeroNumber(start) => {
+            Some(db.first_block_start_n(*start).expect("Couldn't find first block."))
+        }
+        SeekPattern::StartWithImaginaryAmount(start, _) => {
+            Some(db.first_block_start_t(*start).expect("Couldn't find first block."))
+        }
+        SeekPattern::StartWithZeroNumberAmount(start, _) => {
+            Some(db.first_block_start_n(*start).expect("Couldn't find first block."))
+        }
+    }
 }
 
 struct ZeroPort<'a> {
@@ -79,16 +107,6 @@ impl<'a> ZeroPort<'a> {
         if self.zero_ok(&zero_number, &zero) && !self.is_amount_reached() {
             self.out_stream.send(zero_number, zero);
             self.amount_sent += 1;
-        }
-    }
-
-    pub fn block_ok(&self, t0: &f64, t1: &f64, n1: &u64) -> bool {
-        match &self.pattern {
-            SeekPattern::None => true,
-            SeekPattern::StartWithImaginaryPart(start) => (t0 <= start && t1 > start) || t0 > start,
-            SeekPattern::StartWithZeroNumber(start) => n1 > start,
-            SeekPattern::StartWithImaginaryAmount(start, _) => (t0 <= start && t1 > start) || t0 > start,
-            SeekPattern::StartWithZeroNumberAmount(start, _) => n1 > start,
         }
     }
 
