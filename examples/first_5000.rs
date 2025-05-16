@@ -1,16 +1,12 @@
-use futures::Sink;
 use log::debug;
 use rug::Float;
-use std::io;
-use std::pin::Pin;
-use std::task::{Context, Poll};
-use zeta::{zero_stream, ZeroStream};
+use zeta::{zero_stream, SeekPattern, ZeroStream};
 
 #[tokio::main]
 async fn main() {
     env_logger::init();
     let mut sink = ZeroSink::default();
-    zero_stream(&mut sink).await.expect("");
+    zero_stream(&mut sink, SeekPattern::StartWithZeroNumberAmount(0, 5000)).await.expect("");
 }
 
 #[derive(Default)]
@@ -18,31 +14,14 @@ pub struct ZeroSink {
     amt: usize,
 }
 
-impl Sink<Float> for ZeroSink {
-    type Error = io::Error;
-
-    fn poll_ready(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn start_send(mut self: Pin<&mut Self>, item: Float) -> Result<(), Self::Error> {
-        debug!("{item}");
-        self.track_amt();
-        Ok(())
-    }
-
-    fn poll_flush(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn poll_close(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-}
-
 impl ZeroStream for ZeroSink {
     fn is_closed(&self) -> bool {
-        self.amt >= 5000
+        false
+    }
+
+    fn send(&mut self, zero_number: u64, zero: Float) {
+        debug!("{zero_number}: {zero}");
+        self.track_amt();
     }
 }
 

@@ -16,22 +16,23 @@ crate is reverse engineered from.
 
 ## Motivation
 
-I'm a nerd with passions. I know there are other libraries that already provide the zeta zeros without all this 
+I'm a nerd with passions. I know there are other libraries that already provide the zeta zeros without all this
 overhead. I still wanted to create this out of love for the LMFDB project and the Riemann Hypothesis.
 
 ## Usage
 
-First, create an instance of the `ZeroStream` trait. The trait itself has one method `is_closed`, a predicate that tells
-the crate when it should stop streaming zeros. The `ZeroStream` trait also requires you to implement the
-`Sink<rug::Float, Error=std::io::Error>` trait. All zeros will be sent to the `start_send` method of the sink.
+First, create an instance of the `zeta::ZeroStream` trait. The trait itself has two methods. Method `is_closed` is a
+predicate that tells the crate when it should stop streaming zeros. Method `send` is called by the crate whenever a zero
+is found.
 
-The [example](./examples/first_5000.rs) has a minimal implementation of a `ZeroStream`.
+The [example](./examples/first_5000.rs) has a minimal implementation of a `ZeroStream` that's configured to fetch the
+first 5000 zeros in the dataset.
 
-```bash
-export RUST_LOG=debug
-cargo run --example first_5000
-# - This can take up to 4 minutes.
-```
+Then configure a `zeta::SeekPattern` to tell the stream how much zeros it should fetch.
+
+Pass both the `ZeroStream` and the `SeekPattern` to the `zeta::zero_stream` method.
+
+# Drawbacks
 
 Part of the dataset is a sqlite database that holds the location of all data block in the `.dat` file of the dataset.
 By default, the crate will stream the database using sqlite HTTP VFS. This process can be quite slow
@@ -40,10 +41,19 @@ environment variable.
 
 ```bash
 export RUST_LOG=debug
+cargo run --example first_5000
+# - This can take up to 4 minutes.
+```
+
+```bash
+export RUST_LOG=debug
 export ZETA_DB="$HOME/index.db"
 cargo run --example first_5000
 # - This will execute immediately.
 ```
+
+Future optimizations include that `SeekPattern::None` will not require database access and thus will always run
+smoothly.
 
 ## Correctness of the Data
 

@@ -53,7 +53,7 @@ impl Default for DBConnection {
 impl DBConnection {
     pub fn for_file(&mut self, file_name: &str) -> rusqlite::Result<Vec<Block>> {
         self.db
-            .prepare("SELECT * FROM zero_index WHERE filename = ?1")?
+            .prepare("SELECT t, offset FROM zero_index WHERE filename = ?1")?
             .query([file_name])?
             .map(|row| Block::try_from(row))
             .collect()
