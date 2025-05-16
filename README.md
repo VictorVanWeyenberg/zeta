@@ -102,7 +102,7 @@ Let's take [zeros_5000.dat](https://beta.lmfdb.org/riemann-zeta-zeros/data/zeros
 These bytes, interpreted as a little endian
 unsigned 64-bit integer, represent the number of blocks in this file. For zeros_5000.dat this value is 10.
 
-**Block** | For each block we first move to the `offset` location in the file. Then we read the block header.
+**Block** | For each block we first read the block header.
 
 The block header consists of 32 bytes interpreted as:
 
