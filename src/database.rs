@@ -58,7 +58,7 @@ impl Default for DBConnection {
 
 impl DBConnection {
     pub fn first_block_start_t(&mut self, t: f64) -> rusqlite::Result<Block> {
-        self.db.prepare("SELECT offset, filename, block_number FROM zero_index WHERE t <= ?1 ORDER BY t ASC LIMIT 1")?
+        self.db.prepare("SELECT offset, filename, block_number FROM zero_index WHERE t <= ?1 ORDER BY t DESC LIMIT 1")?
             .query([t])?
             .map(|row| Block::try_from(row))
             .next()
@@ -66,7 +66,7 @@ impl DBConnection {
     }
 
     pub fn first_block_start_n(&mut self, n: u64) -> rusqlite::Result<Block> {
-        self.db.prepare("SELECT offset, filename, block_number FROM zero_index WHERE N <= ?1 ORDER BY N ASC LIMIT 1")?
+        self.db.prepare("SELECT offset, filename, block_number FROM zero_index WHERE N <= ?1 ORDER BY N DESC LIMIT 1")?
             .query([n])?
             .map(|row| Block::try_from(row))
             .next()
