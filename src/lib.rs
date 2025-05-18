@@ -1,6 +1,6 @@
 use crate::dat::FileProcessor;
 use crate::database::{Block, DBConnection};
-use crate::repository::{read_repository, FileDigest};
+use crate::repository::{read_repository, DatFile};
 use futures::TryFutureExt;
 use rug::Float;
 use std::io;
@@ -40,7 +40,7 @@ pub async fn zero_stream(
 }
 
 async fn process_files(
-    mut files: Vec<FileDigest>,
+    mut files: Vec<DatFile>,
     sink: &mut ZeroPort<'_>,
 ) -> Result<(), io::Error> {
     let first_block = first_block(&sink.pattern);

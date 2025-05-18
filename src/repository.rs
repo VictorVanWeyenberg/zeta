@@ -1,40 +1,34 @@
 use crate::lmfdb::lmfdb_resolve;
 use futures::{AsyncBufRead, AsyncBufReadExt, TryStreamExt};
-use md5::Digest;
 use std::cmp::Ordering;
 use std::str::FromStr;
 use url::Url;
 
 #[derive(Eq, PartialEq)]
-pub struct FileDigest {
+pub struct DatFile {
     pub file_name: String,
     pub order: usize,
-    pub digest: Digest,
 }
 
-impl From<String> for FileDigest {
+impl From<String> for DatFile {
     fn from(value: String) -> Self {
-        let mut digest = [0u8; 16];
-        hex::decode_to_slice(&value[0..32], &mut digest).expect("");
-        let digest = Digest(digest);
         let file_name = value[34..].to_string();
         let len = value.len();
         let order = usize::from_str(&value[40..len - 4]).expect("");
         Self {
             file_name,
             order,
-            digest,
         }
     }
 }
 
-impl PartialOrd<Self> for FileDigest {
+impl PartialOrd<Self> for DatFile {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Ord for FileDigest {
+impl Ord for DatFile {
     fn cmp(&self, other: &Self) -> Ordering {
         self.order.cmp(&other.order)
     }
@@ -54,13 +48,13 @@ async fn repository_reader() -> Result<impl AsyncBufRead, reqwest::Error> {
         .into_async_read())
 }
 
-pub async fn read_repository() -> Result<Vec<FileDigest>, std::io::Error> {
+pub async fn read_repository() -> Result<Vec<DatFile>, std::io::Error> {
     repository_reader()
         .await
         .map_err(std::io::Error::other)?
         .lines()
-        .map_ok(FileDigest::from)
-        .try_collect::<Vec<FileDigest>>()
+        .map_ok(DatFile::from)
+        .try_collect::<Vec<DatFile>>()
         .await
         .map(|mut ok| {
             ok.sort();

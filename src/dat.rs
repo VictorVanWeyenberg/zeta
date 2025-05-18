@@ -1,6 +1,6 @@
 use crate::database::Block;
 use crate::lmfdb::lmfdb_data_resolve;
-use crate::repository::FileDigest;
+use crate::repository::DatFile;
 use crate::ZeroPort;
 use futures::{Stream, TryStreamExt};
 use log::debug;
@@ -22,9 +22,9 @@ pub struct FileProcessor {
 
 impl FileProcessor {
     pub async fn new(
-        digest: FileDigest,
+        digest: DatFile,
     ) -> Result<FileProcessor, io::Error> {
-        let FileDigest { file_name, .. } = digest;
+        let DatFile { file_name, .. } = digest;
         let file_url = lmfdb_data_resolve(&file_name);
         let reader: BoxedStream = Box::new(
             reqwest::get(file_url)
