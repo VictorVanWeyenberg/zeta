@@ -1,4 +1,4 @@
-use crate::lmfdb::lmfdb_resolve;
+use crate::lmfdb::lmfdb_data_resolve;
 use futures::{AsyncBufRead, AsyncBufReadExt, TryStreamExt};
 use std::cmp::Ordering;
 use std::str::FromStr;
@@ -35,7 +35,7 @@ impl Ord for DatFile {
 }
 
 fn md5_url() -> Url {
-    lmfdb_resolve("data/md5.txt")
+    lmfdb_data_resolve("md5.txt")
 }
 
 async fn repository_reader() -> Result<impl AsyncBufRead, reqwest::Error> {
